@@ -1,21 +1,46 @@
+# Database libraries
 import redis
+import uuid
 
+# API-related libraries
 from flask import jsonify, request
-
 from jsonschema import validate
+import json
 
 DATABASES = [ "tjrn30", "brlaws" ]
 CLUSTERING_ALGORITHMS = [ "kmeans", "hdbscan", "spectral" ]
 TEXTUAL_EXTRACTION_ALGORITHMS = ["tfidf"]
 
-class ExperimentManager():
+class ExperimentDatabase():
     def __init__(self) -> None:
+        # 'redis' is the hostname of the redis container on the application’s network
+        self.client = redis.Redis(host='redis', port=6379)
+
+    def insert_experiment(self, data):
+        """
+        Insert the experiment in the database.
+
+            data: python dict
+        """
+        experiment_id = "experiment_"+str(uuid.uuid1())
+        data_string = json.dumps(data)
+
+        self.client.set(experiment_id, data_string)
+        self.client.lpush("experiment-list", experiment_id)
+
+        return experiment_id
+
+    def request_experiment(self, data):
+        pass
+
+class ExperimentManager():
+    def __init__(self, database) -> None:
         """
         Experiment Manager
         
             Manager of experiment related requests
         """
-        self.redis_client = redis.Redis()
+        self.database = database
         self._experiment_schema = { 
                                     "type":"object",
                                     "properties":{
@@ -43,20 +68,47 @@ class ExperimentManager():
         """
         if not self.valid_schedule(request):
             return jsonify(self._bad_request)
-                    
-        response = jsonify( {"echo":request.get_json()} )
+
+        data = request.get_json()
+        id = self.__insert_into_database(data)
+        response = jsonify( { "text":"Experiment sucessfully created.", 
+                              "data":data,
+                              "id":id 
+                            } )
         return response
 
     def valid_schedule(self, request):
+        """
+        Validate schedule request
+        """
+
         try:
             request.get_json()
         except:
             return False
         
         data = request.get_json()
+        
         try: 
             validate(instance=data, schema=self._experiment_schema)
         except:
             return False
 
         return True
+
+    def __insert_into_database(self, data):
+        id_ = self.database.insert_experiment(data)
+        return id_
+
+class ExperimentRequester():
+    def __init__(self, database) -> None:
+        self.database = database
+
+    def request_experiment(self):
+        """
+            Return a experiment
+        """
+                    
+        response = jsonify( { "experimento":"receba!" } )
+        return response
+        
