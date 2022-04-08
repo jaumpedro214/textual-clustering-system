@@ -1,0 +1,16 @@
+version: "3.3"
+services:
+  redis:
+    image: "redis:alpine"
+  mongo:
+    image: "mongo"
+    volumes:
+      - ../volumes:/data
+  task:
+    build: .
+    ports:
+      - "8000:5000"
+    volumes:
+      - .:/code
+    environment:
+      FLASK_ENV: development
