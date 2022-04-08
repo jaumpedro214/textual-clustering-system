@@ -7,6 +7,9 @@ services:
     volumes:
       - ../volumes:/data
   task:
+    depends_on:
+      - mongo
+      - redis
     build: .
     ports:
       - "8000:5000"
