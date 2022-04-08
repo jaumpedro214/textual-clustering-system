@@ -1,6 +1,7 @@
 # Database libraries
 import redis
 import uuid
+import datetime
 
 # API-related libraries
 from flask import jsonify, request
@@ -18,11 +19,14 @@ class ExperimentDatabase():
 
     def insert_experiment(self, data):
         """
-        Insert the experiment in the database.
+        Insert the experiment into the database.
 
+        Attributes
+        ----------
             data: python dict
         """
         experiment_id = "experiment_"+str(uuid.uuid1())
+        data['id'] = experiment_id
         data_string = json.dumps(data)
 
         self.client.set(experiment_id, data_string)
@@ -30,15 +34,31 @@ class ExperimentDatabase():
 
         return experiment_id
 
-    def request_experiment(self, data):
-        pass
+    def request_experiment(self):
+        """
+        Return a experiment registered on the database
+        """
+        id = self.client.rpop( "experiment-list" )
+
+        if not id:
+            return {"text":"experiment list is empty"}
+
+        data_string = self.client.get( id )
+        data = json.loads(data_string) 
+        self.client.delete(id)
+
+        return data
 
 class ExperimentManager():
     def __init__(self, database) -> None:
         """
         Experiment Manager
         
-            Manager of experiment related requests
+        Manager of experiment related requests
+
+        Attributes
+        ---------
+        database: database object
         """
         self.database = database
         self._experiment_schema = { 
@@ -64,7 +84,7 @@ class ExperimentManager():
         
     def schedule_experiment(self):
         """
-            Add a experiment to the schedule list
+        Add a experiment to the schedule list
         """
         if not self.valid_schedule(request):
             return jsonify(self._bad_request)
@@ -106,9 +126,10 @@ class ExperimentRequester():
 
     def request_experiment(self):
         """
-            Return a experiment
+        Return a experiment
         """
+        data = self.database.request_experiment()
                     
-        response = jsonify( { "experimento":"receba!" } )
+        response = jsonify( data )
         return response
         
