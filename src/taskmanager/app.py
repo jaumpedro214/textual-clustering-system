@@ -2,7 +2,7 @@ from crypt import methods
 from flask import Flask
 
 from models import ExperimentManager, ExperimentRequester, ResultManager
-from models import DummyDatabase, ResultsDatabase, ExperimentDatabase
+from databases import DummyDatabase, ResultsDatabase, ExperimentDatabase
 
 app = Flask(__name__)
 

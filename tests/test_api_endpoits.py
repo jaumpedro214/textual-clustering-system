@@ -8,13 +8,12 @@ class TestScheduleEndpoint(unittest.TestCase):
 		data = get_response.json()
 		self.assertEqual( data['status'], 400 )
 
-	
 	def test_return_sucess_correct_params(self):
 		data = {"database":"tjrn30",
 		        "clustering":{ "algorithm":"kmeans",
 				               "hyperparameters":{}
 							 },
-				"vectorization":{"algorithm":"jandaira"}
+				"vectorization":"tfidf"
 				}
 		response = requests.post("http://127.0.0.1:8000/schedule", json=data)
 		response_data = response.json()

@@ -1,73 +1,15 @@
-# Database libraries
-import pymongo
-import redis
-import uuid
-import datetime
-
 # API-related libraries
 from flask import jsonify, request
 from jsonschema import validate
 import json
 
+# This come from a config file
 DATABASES = [ "tjrn30", "brlaws" ]
 CLUSTERING_ALGORITHMS = [ "kmeans", "hdbscan", "spectral" ]
-TEXTUAL_EXTRACTION_ALGORITHMS = ["tfidf"]
+TEXT_EXTRACTION_ALGORITHMS = ["tfidf", "tfidfkohonen"]
 
-# API Database Classes
-class ExperimentDatabase():
-    def __init__(self) -> None:
-        # 'redis' is the hostname of the redis container on the application’s network
-        self.client = redis.Redis(host='redis', port=6379)
-
-    def insert(self, data):
-        """
-        Insert the experiment into the database.
-
-        Attributes
-        ----------
-            data: python dict
-        """
-        experiment_id = "experiment_"+str(uuid.uuid1())
-        data['id'] = experiment_id
-        data_string = json.dumps(data)
-
-        self.client.set(experiment_id, data_string)
-        self.client.lpush("experiment-list", experiment_id)
-
-        return experiment_id
-
-    def request(self):
-        """
-        Return a experiment registered on the database
-        """
-        id = self.client.rpop( "experiment-list" )
-
-        if not id:
-            return {"text":"experiment list is empty"}
-
-        data_string = self.client.get( id )
-        data = json.loads(data_string) 
-        self.client.delete(id)
-
-        return data
-
-class ResultsDatabase():
-    def __init__(self) -> None:
-        self.client = pymongo.MongoClient('mongo', 27017)
-
-    def insert(self, data):
-        # Setting the experiment id as the entry id
-        data["_id"] = data["experiment_data"]["id"]
-
-        # Connecting to the Mongo Database 'db'
-        db = self.client.db
-        db.results.insert_one( data )
-
-        return data["_id"]
-
-class DummyDatabase():
-    def insert(self, data):
-        return 0
+# Get from MongoDB
+TEXT_EXTRACTION_MODELS = []
 
 # API endpoits
 class ExperimentManager():
@@ -94,15 +36,12 @@ class ExperimentManager():
                     "properties":{ 
                         "algorithm":{
                             "type": "string",
-                            "enum":CLUSTERING_ALGORITHMS
+                            "enum": CLUSTERING_ALGORITHMS
                             },
                             "hyperparameters":{"type": "object"}
                     },
                 },
-                "vectorization":{ 
-                    "type":"object", 
-                    "properties":{ "algoritm":{"type": "string"} } 
-                }
+                "vectorization":{ "type":"string" }
             }
         }
         self._bad_request = {"status":400, "text":"bad request"}
