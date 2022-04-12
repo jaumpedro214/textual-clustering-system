@@ -6,6 +6,22 @@ import datetime
 import json
 
 # API Database Classes
+
+class TextExtractionModelsDatabase():
+    def __init__(self) -> None:
+        """
+        Database that stores the experiment's results
+        """
+        self.client = pymongo.MongoClient('mongo', 27017)
+    
+    def insert(self, data):
+        # Setting the experiment id as the name of the model
+        data["_id"] = data["name"]
+        # Connecting to the Mongo Database 'db'
+        db = self.client.db
+        db.text_extraction_models.insert_one( data )
+        return data["_id"]
+
 class ExperimentDatabase():
     def __init__(self):
         """

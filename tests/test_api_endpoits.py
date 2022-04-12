@@ -76,3 +76,28 @@ class TestResultEndpoint(unittest.TestCase):
 		response = requests.post( "http://127.0.0.1:8000/result", json=correct_data )
 		data = response.json()
 		self.assertEqual( data['status'], 200 )
+
+class TestTextExtractionModelEndpoint( unittest.TestCase ):
+
+	def test_return_error_no_params(self):
+		response = requests.post( "http://127.0.0.1:8000/create-text-extraction-model" )
+		data = response.json()
+		self.assertEqual( data['status'], 400 )
+
+	def test_return_error_wrong_params(self):
+		incorrect_data = { "hyperparameters":123, # Wrong
+		                   "algorithm":"tfidf",
+						   "name":"testname" 
+						 }
+		response = requests.post( "http://127.0.0.1:8000/create-text-extraction-model", json=incorrect_data )
+		data = response.json()
+		self.assertEqual(data['status'], 400 )
+
+	def test_return_sucess_correct_params(self):
+		correct_data = { "hyperparameters":{"something":123, "other":"abc"},
+		                 "algorithm":"tfidf",
+						 "name":"testname" 
+						 }
+		response = requests.post( "http://127.0.0.1:8000/create-text-extraction-model", json=correct_data )
+		data = response.json()
+		self.assertEqual(data['status'], 200 )

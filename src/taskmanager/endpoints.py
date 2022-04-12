@@ -1,7 +1,6 @@
 # API-related libraries
 from flask import jsonify, request
 from jsonschema import validate
-import json
 
 # This come from a config file
 DATABASES = [ "tjrn30", "brlaws" ]
@@ -12,20 +11,50 @@ TEXT_EXTRACTION_ALGORITHMS = ["tfidf", "tfidfkohonen"]
 TEXT_EXTRACTION_MODELS = []
 
 # API endpoits
-class ExperimentManager():
-    def __init__(self, database) -> None:
+
+class InsertDataEndpoint():
+    def __init__(self, database):
         """
-        Experiment Manager
-        
-        Manager of experiment related requests. 
-        Wraps API endpoint that adds new experiment to the database.
+        Base class for all POST endpoints
 
         Attributes
         ---------
             database: database object
         """
+        self._bad_request = {"status":400, "text":"bad request"}
         self.database = database
-        self._experiment_schema = { 
+        self._schema = {}
+
+    def valid_data(self, request):
+        """
+        Validate schedule request
+        """
+        try:
+            data = request.get_json()
+        except:
+            return False
+
+        try: 
+            validate(instance=data, schema=self._schema)
+        except:
+            return False
+
+        return True
+
+    def _insert_into_database(self, data):
+        try:
+            return self.database.insert(data)
+        except:
+            return -1
+
+class ExperimentManager( InsertDataEndpoint ):
+    def __init__(self, *args, **kwargs):
+        """
+        the API endpoint that schedules the experiments
+        """
+        super( ExperimentManager, self ).__init__( *args, **kwargs )
+
+        self._schema = { 
             "type":"object",
             "properties":{
                 "database":{"type":"string",
@@ -44,80 +73,29 @@ class ExperimentManager():
                 "vectorization":{ "type":"string" }
             }
         }
-        self._bad_request = {"status":400, "text":"bad request"}
         
     def schedule_experiment(self):
         """
         Add a experiment to the schedule list
         """
-        if not self.valid_schedule(request):
+        if not self.valid_data(request):
             return jsonify(self._bad_request)
 
         data = request.get_json()
-        id = self.__insert_into_database(data)
+        id = self._insert_into_database(data)
         response = jsonify( { "text":"Experiment sucessfully created.", 
                               "data":data,
                               "id":id 
                             } )
         return response
 
-    def valid_schedule(self, request):
-        """
-        Validate schedule request
-        """
-
-        try:
-            request.get_json()
-        except:
-            return False
-        
-        data = request.get_json()
-        
-        try: 
-            validate(instance=data, schema=self._experiment_schema)
-        except:
-            return False
-
-        return True
-
-    def __insert_into_database(self, data):
-        id_ = self.database.insert(data)
-        return id_
-
-class ExperimentRequester():
-    def __init__(self, database) -> None:
-        """
-        ExperimentRequester
-
-        Class wraping the API endpoint to provide a experiment description.
-
-        Attributes
-        ---------
-            database: database object
-        """
-        self.database = database
-
-    def request_experiment(self):
-        """
-        Return a experiment description
-        """
-        data = self.database.request()
-                    
-        response = jsonify( data )
-        return response
-
-class ResultManager():
+class ResultManager( InsertDataEndpoint ):
     """
     Class wraping the API endpoint that recieves a experiment result
-
-    Attributes
-    ---------
-        database: database object
     """
     
-    def __init__(self, database):
-        
-        self.database = database
+    def __init__(self, *args, **kwargs):
+        super( ResultManager, self ).__init__( *args, **kwargs )
 
         stats_schema = {
             "type":"object",
@@ -159,7 +137,7 @@ class ResultManager():
             },
         }
 
-        self._post_schema = {
+        self._schema = {
             "type":"object",
             "properties":{
                 "experiment_data":{
@@ -169,8 +147,6 @@ class ResultManager():
                 "results":self._result_schema,
             }
         }
-
-        self._bad_request = {"status":400, "text":"bad request"}
         
     def post_result(self):
         """
@@ -180,7 +156,7 @@ class ResultManager():
             return jsonify(self._bad_request)
 
         data = request.get_json()
-        id = self.__insert_into_database(data)
+        id = self._insert_into_database(data)
         if id==-1:
             return self._bad_request
         
@@ -189,26 +165,54 @@ class ResultManager():
                               "id":id 
                             } )
         return response
-    
-    def __insert_into_database(self, data):
-        try: 
-            self._bad_request[ 'exception' ] = "Error when saving data."
-            return self.database.insert(data)
-        except:
-            return -1
 
-    def valid_data(self, response):
-        try:
-            self._bad_request[ 'exception' ] = "Unable to get json data."
-            request.get_json()
-        except:           
-            return False
-        
+class TextExtractionModelManager( InsertDataEndpoint ):
+
+    def __init__(self, *args, **kwargs):
+        super( TextExtractionModelManager, self ).__init__( *args, **kwargs )
+        self._schema = {
+            "type":"object",
+            "properties":{
+                "hyperparameters":{ "type":"object" },
+                "algorithm":{ 
+                    "type":"string",
+                    "enum":TEXT_EXTRACTION_ALGORITHMS
+                    },
+                "name":{ "type":"string" },
+            }
+        }
+
+    def post_text_algorithm(self):
+        """
+        Recieves a POST request with a vectorizing algorithm and adds it to the database.
+        """
+        if not self.valid_data(request):
+            return jsonify(self._bad_request)
+
         data = request.get_json()
-        try:
-            validate(instance=data, schema=self._post_schema)
-        except Exception as exception:
-            self._bad_request[ 'exception' ] = str(exception)
-            return False
+        id = self._insert_into_database(data)
+        if id==-1:
+            return self._bad_request
+        
+        response = jsonify( { "text":"Algorithm accepted.", 
+                              "status":200,
+                              "id":id 
+                            } )
+        return response
 
-        return True
+
+class ExperimentRequester():
+    def __init__(self, database) -> None:
+        """
+        Class wraping the API endpoint to provide a experiment description.
+        """
+        self.database = database
+
+    def request_experiment(self):
+        """
+        Return a experiment description
+        """
+        data = self.database.request()
+                    
+        response = jsonify( data )
+        return response
