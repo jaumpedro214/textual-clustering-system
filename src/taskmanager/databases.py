@@ -10,7 +10,7 @@ import json
 class TextExtractionModelsDatabase():
     def __init__(self) -> None:
         """
-        Database that stores the experiment's results
+        Database that stores the Text Extraction Models
         """
         self.client = pymongo.MongoClient('mongo', 27017)
     
@@ -80,5 +80,8 @@ class ResultsDatabase():
         return data["_id"]
 
 class DummyDatabase():
+    """
+    DUmmy database for text purpose
+    """
     def insert(self, data):
         return 0

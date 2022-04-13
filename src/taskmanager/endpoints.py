@@ -2,24 +2,22 @@
 from flask import jsonify, request
 from jsonschema import validate
 
-# This come from a config file
-DATABASES = [ "tjrn30", "brlaws" ]
-CLUSTERING_ALGORITHMS = [ "kmeans", "hdbscan", "spectral" ]
-TEXT_EXTRACTION_ALGORITHMS = ["tfidf", "tfidfkohonen"]
+class ExperimentConstraints():
+    """
+    Class containing all possible values in experiment requests fields.
+    """
+    DATABASES = [ "tjrn30", "brlaws" ]
+    CLUSTERING_ALGORITHMS = [ "kmeans", "hdbscan", "spectral" ]
+    TEXT_EXTRACTION_ALGORITHMS = ["tfidf", "tfidfkohonen"]
 
-# Get from MongoDB
-TEXT_EXTRACTION_MODELS = []
-
+    # Get from MongoDB
+    TEXT_EXTRACTION_MODELS = []
+    
 # API endpoits
-
 class InsertDataEndpoint():
     def __init__(self, database):
         """
         Base class for all POST endpoints
-
-        Attributes
-        ---------
-            database: database object
         """
         self._bad_request = {"status":400, "text":"bad request"}
         self.database = database
@@ -58,14 +56,14 @@ class ExperimentManager( InsertDataEndpoint ):
             "type":"object",
             "properties":{
                 "database":{"type":"string",
-                            "enum":DATABASES
+                            "enum":ExperimentConstraints.DATABASES
                             },
                 "clustering":{ 
                     "type":"object",
                     "properties":{ 
                         "algorithm":{
                             "type": "string",
-                            "enum": CLUSTERING_ALGORITHMS
+                            "enum": ExperimentConstraints.CLUSTERING_ALGORITHMS
                             },
                             "hyperparameters":{"type": "object"}
                     },
@@ -90,11 +88,10 @@ class ExperimentManager( InsertDataEndpoint ):
         return response
 
 class ResultManager( InsertDataEndpoint ):
-    """
-    Class wraping the API endpoint that recieves a experiment result
-    """
-    
     def __init__(self, *args, **kwargs):
+        """
+        Class wraping the API endpoint that recieves a experiment result
+        """
         super( ResultManager, self ).__init__( *args, **kwargs )
 
         stats_schema = {
@@ -169,6 +166,9 @@ class ResultManager( InsertDataEndpoint ):
 class TextExtractionModelManager( InsertDataEndpoint ):
 
     def __init__(self, *args, **kwargs):
+        """
+        Class wraping the API endpoint that recieves a Text Extraction Model 
+        """
         super( TextExtractionModelManager, self ).__init__( *args, **kwargs )
         self._schema = {
             "type":"object",
@@ -176,7 +176,7 @@ class TextExtractionModelManager( InsertDataEndpoint ):
                 "hyperparameters":{ "type":"object" },
                 "algorithm":{ 
                     "type":"string",
-                    "enum":TEXT_EXTRACTION_ALGORITHMS
+                    "enum":ExperimentConstraints.TEXT_EXTRACTION_ALGORITHMS
                     },
                 "name":{ "type":"string" },
             }
